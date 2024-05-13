@@ -6,3 +6,7 @@
 0	6	0	clean	cf3a729dbbd1d963
 0	6	0	clean	cf3a729dbbd1d963
 0	5	0	clean	cf3a729dbbd1d963
+0	5	0	clean	cf3a729dbbd1d963
+1	39	7373295754129143	CMakeFiles/opencv_jni_shared.dir/dummy.cpp.o	3d6c16eea7ce3885
+39	106	7373295754649368	libopencv_jni_shared.a	17a3df10beff8dde
+0	6	0	clean	cf3a729dbbd1d963

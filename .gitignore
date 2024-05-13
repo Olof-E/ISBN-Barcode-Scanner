@@ -182,5 +182,3 @@ cmake-build-release/
 
 # File-based project format
 *.iws
-
-/opencv/.cxx/Debug/
