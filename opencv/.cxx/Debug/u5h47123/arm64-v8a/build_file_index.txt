@@ -1,0 +1,1 @@
+C:\Users\Olof\AndroidStudioProjects\ISBNBarcodeScanner\opencv\libcxx_helper\CMakeLists.txt
