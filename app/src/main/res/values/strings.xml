@@ -1,4 +1,5 @@
 <resources>
     <string name="app_name">ISBN-Barcode-Scanner</string>
+    <string name="isbn_title" formatted="true">ISBN: %1$s</string>
     <string name="scan_code">Scan</string>
 </resources>

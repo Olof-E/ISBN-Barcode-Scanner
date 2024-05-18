@@ -55,8 +55,10 @@ android {
 dependencies {
     implementation(libs.androidx.constraintlayout)
     implementation(libs.androidx.appcompat)
+    implementation(libs.androidx.lifecycle.runtime.compose.android)
     // CameraX core library using the camera2 implementation
     val cameraxVersion = "1.4.0-beta01"
+    val accompanistVersion = "0.32.0"
     // The following line is optional, as the core library is included indirectly by camera-camera2
     implementation("androidx.camera:camera-core:${cameraxVersion}")
     implementation("androidx.camera:camera-camera2:${cameraxVersion}")
@@ -73,6 +75,8 @@ dependencies {
 
     implementation("com.google.mlkit:barcode-scanning:17.2.0")
 
+    implementation("com.google.accompanist:accompanist-permissions:$accompanistVersion")
+
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
@@ -81,6 +85,7 @@ dependencies {
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
+    implementation("androidx.compose.material:material-icons-extended")
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
