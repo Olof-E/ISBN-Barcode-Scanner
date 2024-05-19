@@ -1,20 +1,15 @@
 package com.example.isbn_barcode_scanner
 
 import android.graphics.Point
-import android.widget.TextView
-import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis.COORDINATE_SYSTEM_VIEW_REFERENCED
-import androidx.camera.core.Preview
 import androidx.camera.mlkit.vision.MlKitAnalyzer
 import androidx.camera.view.LifecycleCameraController
 import androidx.camera.view.PreviewView
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -27,7 +22,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -50,9 +44,6 @@ import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.barcode.common.Barcode
 import java.util.concurrent.Executors
 
-
-typealias scanListener = (code: String, corners: ArrayList<Offset>?) -> Unit
-
 private class Rect (points: Array<Point>) {
     val corners = ArrayList<Offset>()
 
@@ -68,22 +59,16 @@ private class Rect (points: Array<Point>) {
 
 @Composable
 fun CameraPreviewScreen() {
-    val lensFacing = CameraSelector.LENS_FACING_BACK
     val lifecycleOwner = LocalLifecycleOwner.current
     val cameraExecutor = Executors.newSingleThreadExecutor()
     val context = LocalContext.current
-    val preview = Preview.Builder().build()
+    // val preview = Preview.Builder().build()
     val previewView = remember {
         PreviewView(context)
     }
 
     val decodedIsbn = remember {
         mutableStateOf("")
-    }
-
-
-    val prevBarcodeBounds = remember {
-        mutableStateListOf<Rect>()
     }
 
     val barcodeCorners = remember {
@@ -118,18 +103,18 @@ fun CameraPreviewScreen() {
 
                 val prevCodeBounds = barcodeCorners.toList()
 
-                val interpBounds = ArrayList<Offset>()
+                val avgBounds = ArrayList<Offset>()
 
                 if(prevCodeBounds.isNotEmpty()){
                     for (i in 0..4){
-                        interpBounds.add(Offset(codeBounds.corners[i].x + (prevCodeBounds[i].x - codeBounds.corners[i].x) * 0.33f, codeBounds.corners[i].y + (prevCodeBounds[i].y - codeBounds.corners[i].y) * 0.33f))
+                        avgBounds.add(Offset(codeBounds.corners[i].x + (prevCodeBounds[i].x - codeBounds.corners[i].x) * 0.33f, codeBounds.corners[i].y + (prevCodeBounds[i].y - codeBounds.corners[i].y) * 0.33f))
 
                     }
                 }else{
-                    interpBounds.addAll(codeBounds.corners)
+                    avgBounds.addAll(codeBounds.corners)
                 }
                 barcodeCorners.clear()
-                barcodeCorners.addAll(interpBounds)
+                barcodeCorners.addAll(avgBounds)
             }
         }
     )
