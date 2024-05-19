@@ -1,33 +1,38 @@
 package com.example.isbn_barcode_scanner
 
-import android.content.Context
+import android.graphics.Point
+import android.widget.TextView
 import androidx.camera.core.CameraSelector
-import androidx.camera.core.ExperimentalGetImage
-import androidx.camera.core.ImageAnalysis
-import androidx.camera.core.ImageProxy
+import androidx.camera.core.ImageAnalysis.COORDINATE_SYSTEM_VIEW_REFERENCED
 import androidx.camera.core.Preview
-import androidx.camera.lifecycle.ProcessCameraProvider
+import androidx.camera.mlkit.vision.MlKitAnalyzer
+import androidx.camera.view.LifecycleCameraController
 import androidx.camera.view.PreviewView
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.LocalTextStyle
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PointMode
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -40,16 +45,26 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.core.content.ContextCompat
 import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.barcode.common.Barcode
-import com.google.mlkit.vision.common.InputImage
 import java.util.concurrent.Executors
-import kotlin.coroutines.resume
-import kotlin.coroutines.suspendCoroutine
 
-typealias scanListener = (code: String) -> Unit
+
+typealias scanListener = (code: String, corners: ArrayList<Offset>?) -> Unit
+
+private class Rect (points: Array<Point>) {
+    val corners = ArrayList<Offset>()
+
+    init {
+        points.forEach { point ->
+            corners.add(Offset(point.x.toFloat(), point.y.toFloat()))
+        }
+        corners.add(Offset(points[0].x.toFloat(), points[0].y.toFloat()))
+    }
+}
+
+
 
 @Composable
 fun CameraPreviewScreen() {
@@ -62,26 +77,71 @@ fun CameraPreviewScreen() {
         PreviewView(context)
     }
 
-    var decodedIsbn by remember {
+    val decodedIsbn = remember {
         mutableStateOf("")
     }
 
-    val imageAnalyzer = ImageAnalysis.Builder()
-        .build()
-        .also {
-            it.setAnalyzer(cameraExecutor, BarcodeAnalyzer { code ->
-                decodedIsbn = code
-            })
-        }
 
-    val cameraxSelector = CameraSelector.Builder().requireLensFacing(lensFacing).build()
-    LaunchedEffect(lensFacing) {
-        val cameraProvider = context.getCameraProvider()
-        cameraProvider.unbindAll()
-        cameraProvider.bindToLifecycle(lifecycleOwner, cameraxSelector, preview, imageAnalyzer)
-        preview.setSurfaceProvider(previewView.surfaceProvider)
+    val prevBarcodeBounds = remember {
+        mutableStateListOf<Rect>()
     }
+
+    val barcodeCorners = remember {
+        mutableStateListOf<Offset>()
+    }
+
+    val cameraController = LifecycleCameraController(context)
+
+    val options = BarcodeScannerOptions.Builder()
+        .setBarcodeFormats(Barcode.FORMAT_EAN_13)
+        .build()
+    val barcodeScanner = BarcodeScanning.getClient(options)
+
+    cameraController.setImageAnalysisAnalyzer(
+        cameraExecutor,
+        MlKitAnalyzer(
+            listOf(barcodeScanner),
+            COORDINATE_SYSTEM_VIEW_REFERENCED,
+            cameraExecutor
+        ) { result: MlKitAnalyzer.Result? ->
+            val barcodeResults = result?.getValue(barcodeScanner)
+            if ((barcodeResults == null) ||
+                (barcodeResults.size == 0) ||
+                (barcodeResults.first() == null)
+            ) {
+                if (decodedIsbn.value.isNotEmpty()) decodedIsbn.value = ""
+                if(barcodeCorners.isNotEmpty()) barcodeCorners.clear()
+            }else {
+                decodedIsbn.value = barcodeResults[0].rawValue.toString()
+
+                val codeBounds = Rect(barcodeResults[0].cornerPoints!!)
+
+                val prevCodeBounds = barcodeCorners.toList()
+
+                val interpBounds = ArrayList<Offset>()
+
+                if(prevCodeBounds.isNotEmpty()){
+                    for (i in 0..4){
+                        interpBounds.add(Offset(codeBounds.corners[i].x + (prevCodeBounds[i].x - codeBounds.corners[i].x) * 0.33f, codeBounds.corners[i].y + (prevCodeBounds[i].y - codeBounds.corners[i].y) * 0.33f))
+
+                    }
+                }else{
+                    interpBounds.addAll(codeBounds.corners)
+                }
+                barcodeCorners.clear()
+                barcodeCorners.addAll(interpBounds)
+            }
+        }
+    )
+
+    cameraController.bindToLifecycle(lifecycleOwner)
+    previewView.controller = cameraController
+
     AndroidView({ previewView }, modifier = Modifier.fillMaxSize())
+
+    Canvas(modifier = Modifier) {
+        drawPoints(barcodeCorners, pointMode = PointMode.Polygon, color= Color.Cyan, strokeWidth = 10f)
+    }
 
     Column(
         Modifier.fillMaxHeight(),
@@ -89,12 +149,15 @@ fun CameraPreviewScreen() {
         horizontalAlignment = Alignment.CenterHorizontally) {
 
 
-        OutlinedText(
-            text = if (decodedIsbn.isNotEmpty())"ISBN: $decodedIsbn" else "",
-            fontSize = 25.sp,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(top = 15.dp)
-        )
+        Surface(modifier = Modifier, color = Color.Transparent) {
+            OutlinedText(
+                text = if (decodedIsbn.value.isNotEmpty()) "ISBN: ${decodedIsbn.value}" else "",
+                fontSize = 25.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(top = 15.dp)
+            )
+        }
+
 
         Button(onClick = { }, modifier = Modifier
             .padding(bottom = 20.dp)
@@ -127,62 +190,9 @@ fun OutlinedText(text: String, modifier: Modifier = Modifier, fontSize: TextUnit
                 TextStyle(color = outlineColor,
                     lineHeight = fontSize,
                     fontSize = fontSize,
-                    drawStyle = Stroke(width = outlineWidth, join = StrokeJoin.Bevel)
+                    drawStyle = Stroke(width = outlineWidth, join = StrokeJoin.Round)
                 )
             )
         )
     }
 }
-
-
-private class BarcodeAnalyzer(private val listener: scanListener) : ImageAnalysis.Analyzer {
-    private val options = BarcodeScannerOptions.Builder()
-        .enableAllPotentialBarcodes() // Optional
-        .build()
-
-    val scanner = BarcodeScanning.getClient(options)
-
-    @ExperimentalGetImage
-    override fun analyze(imageProxy: ImageProxy) {
-        val mediaImage = imageProxy.image
-        if (mediaImage != null) {
-            val image = InputImage.fromMediaImage(mediaImage, imageProxy.imageInfo.rotationDegrees)
-
-
-            val result = scanner.process(image)
-                .addOnSuccessListener { barcodes ->
-                    for (barcode in barcodes) {
-                        val bounds = barcode.boundingBox
-                        val corners = barcode.cornerPoints
-
-                        val rawValue = barcode.rawValue
-
-                        val valueType = barcode.valueType
-                        // See API reference for complete list of supported types
-                        when (valueType) {
-                            Barcode.TYPE_ISBN -> {
-                                listener(rawValue.toString())
-                            }
-                        }
-                    }
-                    if(barcodes.isEmpty()){
-                        listener("")
-                    }
-                    imageProxy.close()
-                }
-                .addOnFailureListener {}
-
-        }
-
-    }
-}
-
-private suspend fun Context.getCameraProvider(): ProcessCameraProvider =
-    suspendCoroutine { continuation ->
-        ProcessCameraProvider.getInstance(this).also { cameraProvider ->
-            cameraProvider.addListener({
-                @Suppress("BlockingMethodInNonBlockingContext")
-                continuation.resume(cameraProvider.get())
-            }, ContextCompat.getMainExecutor(this))
-        }
-    }

@@ -54,7 +54,7 @@ fun MainContent(hasPermission: Boolean, onRequestPermission: () -> Unit) {
                     CameraPreviewScreen()
                 }
             }else {
-                NoPermissionScreen (onRequestPermission);
+                NoPermissionScreen (onRequestPermission)
             }
         }
 }
