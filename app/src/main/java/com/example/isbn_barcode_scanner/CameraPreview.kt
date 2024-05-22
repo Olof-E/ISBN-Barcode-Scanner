@@ -27,6 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PointMode
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -108,7 +109,6 @@ fun CameraPreviewScreen() {
                 if(prevCodeBounds.isNotEmpty()){
                     for (i in 0..4){
                         avgBounds.add(Offset(codeBounds.corners[i].x + (prevCodeBounds[i].x - codeBounds.corners[i].x) * 0.33f, codeBounds.corners[i].y + (prevCodeBounds[i].y - codeBounds.corners[i].y) * 0.33f))
-
                     }
                 }else{
                     avgBounds.addAll(codeBounds.corners)
@@ -120,12 +120,13 @@ fun CameraPreviewScreen() {
     )
 
     cameraController.bindToLifecycle(lifecycleOwner)
+    cameraController.enableTorch(true)
     previewView.controller = cameraController
 
     AndroidView({ previewView }, modifier = Modifier.fillMaxSize())
 
     Canvas(modifier = Modifier) {
-        drawPoints(barcodeCorners, pointMode = PointMode.Polygon, color= Color.Cyan, strokeWidth = 10f)
+        drawPoints(barcodeCorners, pointMode = PointMode.Polygon, cap = StrokeCap.Round, color= Color.Cyan, strokeWidth = 10f)
     }
 
     Column(
@@ -136,8 +137,8 @@ fun CameraPreviewScreen() {
 
         Surface(modifier = Modifier, color = Color.Transparent) {
             OutlinedText(
-                text = if (decodedIsbn.value.isNotEmpty()) "ISBN: ${decodedIsbn.value}" else "",
-                fontSize = 25.sp,
+                text = if (decodedIsbn.value.isNotEmpty()) "ISBN: ${decodedIsbn.value.substring(0,3)}-${decodedIsbn.value.substring(3,4)}-${decodedIsbn.value.substring(4,7)}-${decodedIsbn.value.substring(7,12)}-${decodedIsbn.value.substring(12,13)}" else "",
+                fontSize = 22.sp,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(top = 15.dp)
             )
